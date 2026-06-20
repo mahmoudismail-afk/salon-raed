@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, DollarSign, AlertCircle, Trash2, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { createPayment, softDeletePayment, restorePayment } from '@/lib/actions/payments';
 import { formatDate } from '@/lib/utils';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -66,7 +66,6 @@ export default function PaymentsClient({
   async function handleSave() {
     if (!form.amount) { setError('Amount is required.'); return; }
     setError(''); setSaving(true);
-    const supabase = createClient();
 
     let notesValue = form.notes || null;
     if (!form.member_id && form.payer_name.trim()) {
@@ -83,10 +82,9 @@ export default function PaymentsClient({
     };
     if (form.member_id) insertPayload.member_id = form.member_id;
 
-    const { data, error: err } = await supabase.from('payments').insert(insertPayload)
-      .select('*, member:members(profile:profiles(full_name))').single();
+    const { data, error: err } = await createPayment(insertPayload);
 
-    if (err) { setError(err.message); setSaving(false); return; }
+    if (err) { setError(err); setSaving(false); return; }
     if (data) setPayments((prev) => [data, ...prev]);
     setModalOpen(false);
     setSaving(false);
@@ -97,12 +95,8 @@ export default function PaymentsClient({
   async function handleDelete() {
     if (!paymentToDelete) return;
     setDeleting(true);
-    const supabase = createClient();
     const now = new Date().toISOString();
-    const { error: err } = await supabase
-      .from('payments')
-      .update({ deleted_at: now })
-      .eq('id', paymentToDelete.id);
+    const { error: err } = await softDeletePayment(paymentToDelete.id);
 
     if (err) { setDeleting(false); return; }
 
@@ -115,11 +109,7 @@ export default function PaymentsClient({
 
   async function handleRestore(payment: any) {
     setRestoringId(payment.id);
-    const supabase = createClient();
-    const { error: err } = await supabase
-      .from('payments')
-      .update({ deleted_at: null })
-      .eq('id', payment.id);
+    const { error: err } = await restorePayment(payment.id);
 
     if (!err) {
       const restored = { ...payment, deleted_at: null };

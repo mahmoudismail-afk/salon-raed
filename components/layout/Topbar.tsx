@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, Search, Menu, Settings } from 'lucide-react';
+import { Bell, Menu, Settings, Sun, Moon } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
+import { useTheme } from '@/components/ui/ThemeProvider';
 
 interface TopbarProps {
   userName?: string;
@@ -15,10 +16,11 @@ interface TopbarProps {
 
 export default function Topbar({ userName, userEmail, avatarUrl, role, onMenuClick }: TopbarProps) {
   const pathname = usePathname();
+  const { theme, toggle: toggleTheme } = useTheme();
 
   return (
     <header className="topbar">
-      {/* Mobile menu button — opens full sidebar for extra pages */}
+      {/* Mobile menu button */}
       <button
         className="btn btn-ghost btn-icon topbar-menu-btn"
         onClick={onMenuClick}
@@ -28,19 +30,8 @@ export default function Topbar({ userName, userEmail, avatarUrl, role, onMenuCli
         <Menu size={20} />
       </button>
 
-      {/* Search */}
-      <div className="topbar-search">
-        <Search size={16} className="topbar-search-icon" />
-        <input
-          type="search"
-          placeholder="Search members, classes..."
-          className="topbar-search-input"
-          id="topbar-search"
-        />
-      </div>
-
       <div className="topbar-actions">
-        {/* Settings link — visible on mobile next to avatar */}
+        {/* Settings link — visible on mobile */}
         <Link
           href="/settings"
           className={`btn btn-ghost btn-icon topbar-settings-btn ${pathname.startsWith('/settings') ? 'topbar-settings-active' : ''}`}
@@ -58,6 +49,17 @@ export default function Topbar({ userName, userEmail, avatarUrl, role, onMenuCli
         >
           <Bell size={20} />
           <span className="notif-dot" />
+        </button>
+
+        {/* Theme toggle */}
+        <button
+          className="btn btn-ghost btn-icon"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          id="theme-toggle-btn"
+          title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+        >
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
         {/* User avatar */}

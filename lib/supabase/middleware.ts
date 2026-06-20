@@ -37,7 +37,7 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith(path)
   );
 
-  if (!user && isProtected) {
+  if (!user && isProtected && request.method === 'GET') {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
@@ -49,7 +49,7 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith(path)
   );
 
-  if (user && isAuthPage) {
+  if (user && isAuthPage && request.method === 'GET') {
     const role = user.user_metadata?.role;
     const url = request.nextUrl.clone();
     url.pathname = role === 'staff' ? '/members' : '/dashboard';

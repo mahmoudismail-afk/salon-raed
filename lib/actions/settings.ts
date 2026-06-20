@@ -30,10 +30,10 @@ export async function createStaffAccount(data: {
 
   // Update profile role (the trigger creates the profile with role from metadata)
   if (user.user) {
-    await supabaseAdmin
-      .from('profiles')
-      .update({ role: data.role, full_name: data.fullName, phone: data.phone })
-      .eq('auth_id', user.user.id);
+    await query(
+      'UPDATE profiles SET role = $1, full_name = $2, phone = $3 WHERE auth_id = $4',
+      [data.role, data.fullName, data.phone, user.user.id]
+    );
   }
 
   return { success: true };
@@ -45,8 +45,11 @@ export async function deleteUser(profileId: string, authId?: string | null) {
   const supabaseAdmin = getAdminClient();
   
   // Delete the profile first
-  const { error: profileError } = await supabaseAdmin.from('profiles').delete().eq('id', profileId);
-  if (profileError) return { error: `Profile deletion failed: ${profileError.message}` };
+  try {
+    await query('DELETE FROM profiles WHERE id = $1', [profileId]);
+  } catch (err: any) {
+    return { error: `Profile deletion failed: ${err.message}` };
+  }
 
   // Then try to delete the auth user (if an authId exists)
   if (authId) {
@@ -61,13 +64,15 @@ export async function deleteUser(profileId: string, authId?: string | null) {
 }
 
 export async function updateProfile(profileId: string, data: { full_name: string; phone: string }) {
-  const supabaseAdmin = getAdminClient();
-  const { error } = await supabaseAdmin
-    .from('profiles')
-    .update({ full_name: data.full_name, phone: data.phone })
-    .eq('id', profileId);
-  if (error) return { error: error.message };
-  return { success: true };
+  try {
+    await query(
+      'UPDATE profiles SET full_name = $1, phone = $2 WHERE id = $3',
+      [data.full_name, data.phone, profileId]
+    );
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message };
+  }
 }
 
 export async function getStaffPermissions(): Promise<string[]> {

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, Edit, Trash2, RefreshCw, MessageCircle } from 'lucide-react';
 import { getInitials, getMemberStatusColor, formatDate } from '@/lib/utils';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { createClient } from '@/lib/supabase/client';
+import { deleteMember, autoExpireMemberships } from '@/lib/actions/members';
 
 interface MembersTableProps {
   members: any[];
@@ -44,37 +44,8 @@ export default function MembersTable({ members }: MembersTableProps) {
   // Auto-expire: when the table loads, patch any membership/member whose end_date has passed
   useEffect(() => {
     async function autoExpire() {
-      const supabase = createClient();
-      const today = new Date().toISOString().split('T')[0];
-
-      // Find active memberships that are past their end_date
-      const expiredMemberIds: string[] = [];
-      for (const m of members) {
-        const memberships: any[] = m.memberships ?? [];
-        for (const ms of memberships) {
-          if (ms.status === 'active' && ms.end_date && ms.end_date < today) {
-            // Mark the membership row as expired
-            await supabase
-              .from('memberships')
-              .update({ status: 'expired' })
-              .eq('member_id', m.id)
-              .eq('status', 'active')
-              .lt('end_date', today);
-            expiredMemberIds.push(m.id);
-            break;
-          }
-        }
-      }
-
-      // Mark the member record as expired too (only if not already expired)
-      if (expiredMemberIds.length > 0) {
-        for (const memberId of expiredMemberIds) {
-          await supabase
-            .from('members')
-            .update({ status: 'expired' })
-            .eq('id', memberId)
-            .neq('status', 'expired');
-        }
+      const { count } = await autoExpireMemberships();
+      if (count && count > 0) {
         router.refresh();
       }
     }
@@ -86,8 +57,7 @@ export default function MembersTable({ members }: MembersTableProps) {
   async function handleDelete() {
     if (!deleteId) return;
     setDeleting(true);
-    const supabase = createClient();
-    await supabase.from('members').delete().eq('id', deleteId);
+    await deleteMember(deleteId);
     setDeleteId(null);
     setDeleting(false);
     router.refresh();

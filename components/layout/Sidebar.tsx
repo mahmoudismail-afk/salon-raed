@@ -16,11 +16,14 @@ import {
   Shield,
   Receipt,
   ShoppingCart,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import CurrencyToggle from '@/components/ui/CurrencyToggle';
+import { useTheme } from '@/components/ui/ThemeProvider';
 
 const NAV_ITEMS = [
   { href: '/dashboard',  label: 'Dashboard', icon: LayoutDashboard, id: 'dashboard' },
@@ -44,6 +47,7 @@ export default function Sidebar({ mobileOpen, onClose, role = 'staff', staffPerm
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const { theme, toggle: toggleTheme } = useTheme();
 
   const isAdmin = role === 'admin';
 
@@ -54,9 +58,10 @@ export default function Sidebar({ mobileOpen, onClose, role = 'staff', staffPerm
   async function handleLogout() {
     setLoggingOut(true);
     const supabase = createClient();
+    // Sign out locally (clears the browser cookie)
     await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
+    // Hard redirect so Cloudflare edge middleware sees the cleared session immediately.
+    window.location.href = '/login';
   }
 
   return (
@@ -124,6 +129,7 @@ export default function Sidebar({ mobileOpen, onClose, role = 'staff', staffPerm
       {/* Bottom actions */}
       <div className="sidebar-bottom">
         {!collapsed && <span className="sidebar-section-label">Account</span>}
+
         <Link
           href="/settings"
           className={`sidebar-link ${pathname.startsWith('/settings') ? 'sidebar-link-active' : ''}`}

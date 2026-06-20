@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { query } from '@/lib/db';
 import Link from 'next/link';
 import { UserPlus, Search } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
@@ -15,21 +15,57 @@ export default async function MembersPage({
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
   await requirePermission('members');
-  const supabase = await createClient();
   const q = resolvedSearchParams.q ?? '';
   const status = resolvedSearchParams.status ?? '';
-    let query = supabase
-    .from('members')
-    .select(`
-      id, status, created_at, gender,
-      profile:profiles(full_name, email, phone, avatar_url),
-      memberships(start_date, end_date, status, plan:membership_plans(name))
-    `)
-    .order('created_at', { ascending: false });
+  
+  let sql = `
+    SELECT 
+      m.id, m.status, m.created_at, m.gender,
+      p.full_name, p.email, p.phone, p.avatar_url,
+      ms.start_date, ms.end_date, ms.status as membership_status,
+      mp.name as plan_name
+    FROM members m
+    LEFT JOIN profiles p ON m.profile_id = p.id
+    LEFT JOIN memberships ms ON m.id = ms.member_id
+    LEFT JOIN membership_plans mp ON ms.plan_id = mp.id
+  `;
+  let params: any[] = [];
+  if (status) {
+    sql += ' WHERE m.status = $1';
+    params.push(status);
+  }
+  sql += ' ORDER BY m.created_at DESC';
 
-  if (status) query = query.eq('status', status);
+  const { rows } = await query(sql, params);
 
-  const { data: members } = await query;
+  const membersMap = new Map();
+  rows.forEach((r: any) => {
+    if (!membersMap.has(r.id)) {
+      membersMap.set(r.id, {
+        id: r.id,
+        status: r.status,
+        created_at: r.created_at,
+        gender: r.gender,
+        profile: {
+          full_name: r.full_name,
+          email: r.email,
+          phone: r.phone,
+          avatar_url: r.avatar_url
+        },
+        memberships: []
+      });
+    }
+    if (r.membership_status) {
+      membersMap.get(r.id).memberships.push({
+        start_date: r.start_date,
+        end_date: r.end_date,
+        status: r.membership_status,
+        plan: { name: r.plan_name }
+      });
+    }
+  });
+  
+  const members = Array.from(membersMap.values());
 
   // Filter by name/email client-side from the fetched data
   const filtered = (members ?? []).filter((m: any) => {

@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Scissors, Mail, Lock, AlertCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { getUserRole } from '@/lib/actions/auth';
 import '../auth.css';
 
 function LoginForm() {
@@ -42,11 +43,7 @@ function LoginForm() {
 
     if (user) {
       // Also check if they have a profile record
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('auth_id', user.id)
-        .single();
+      const { data: profile } = await getUserRole(user.id);
 
       if (!profile) {
         await supabase.auth.signOut();
@@ -61,8 +58,9 @@ function LoginForm() {
       }
     }
 
-    router.push(redirectPath);
-    router.refresh();
+    // Hard redirect so the edge middleware always sees the fresh session cookie.
+    // A soft router.push can race against the cookie being set on Cloudflare Workers.
+    window.location.href = redirectPath;
   }
 
   return (

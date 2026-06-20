@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Pencil, AlertCircle, Receipt,
   Wallet, TrendingDown, Filter, CheckCircle,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { createExpense, updateExpense, deleteExpense } from '@/lib/actions/expenses';
 import { formatDate } from '@/lib/utils';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -76,8 +76,6 @@ export default function ExpensesClient({ initialExpenses }: { initialExpenses: E
 
   async function handlePostRecurring() {
     setPostingRecurring(true);
-    const supabase = createClient();
-    
     // Find all recurring salaries
     const recurringSalaries = expenses.filter(e => e.type === 'salary' && e.is_recurring);
     const uniqueTitles = Array.from(new Set(recurringSalaries.map(e => e.title)));
@@ -105,7 +103,7 @@ export default function ExpensesClient({ initialExpenses }: { initialExpenses: E
           notes: template.notes,
           is_recurring: true
         };
-        const { data, error } = await supabase.from('expenses').insert(payload).select().single();
+        const { data, error } = await createExpense(payload);
         if (!error && data) {
           setExpenses(prev => [data, ...prev]);
           addedCount++;
@@ -154,7 +152,6 @@ export default function ExpensesClient({ initialExpenses }: { initialExpenses: E
 
     setSaveError('');
     setSaving(true);
-    const supabase = createClient();
 
     const payload = {
       type: form.type,
@@ -166,12 +163,12 @@ export default function ExpensesClient({ initialExpenses }: { initialExpenses: E
     };
 
     if (editing) {
-      const { error } = await supabase.from('expenses').update(payload).eq('id', editing.id);
-      if (error) { setSaveError(error.message); setSaving(false); return; }
+      const { error } = await updateExpense(editing.id, payload);
+      if (error) { setSaveError(error); setSaving(false); return; }
       setExpenses(prev => prev.map(e => e.id === editing.id ? { ...e, ...payload } : e));
     } else {
-      const { data, error } = await supabase.from('expenses').insert(payload).select().single();
-      if (error) { setSaveError(error.message); setSaving(false); return; }
+      const { data, error } = await createExpense(payload);
+      if (error) { setSaveError(error); setSaving(false); return; }
       setExpenses(prev => [data, ...prev]);
     }
 
@@ -183,8 +180,7 @@ export default function ExpensesClient({ initialExpenses }: { initialExpenses: E
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
-    const supabase = createClient();
-    const { error } = await supabase.from('expenses').delete().eq('id', deleteTarget.id);
+    const { error } = await deleteExpense(deleteTarget.id);
     if (!error) {
       setExpenses(prev => prev.filter(e => e.id !== deleteTarget.id));
       router.refresh();

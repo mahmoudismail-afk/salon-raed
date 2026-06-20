@@ -19,14 +19,15 @@ const TABLES = [
   'membership_plans',
   'members',
   'memberships',
-  'payments'
+  'payments',
+  'expenses'
 ];
 
 async function backup() {
   console.log('🚀 Starting "One-Click" Backup...');
   
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const baseBackupDir = 'C:\\WEB\\backup suppabase ama';
+  const baseBackupDir = 'C:\\WEB\\backup raed';
   const backupDir = path.join(baseBackupDir, `backup-${timestamp}`);
   
   if (!fs.existsSync(baseBackupDir)) {

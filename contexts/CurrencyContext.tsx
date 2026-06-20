@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Currency, DEFAULT_LBP_RATE, formatCurrencyAuto, formatUSD, formatLBP, usdToLbp } from '@/lib/currency';
-import { createClient } from '@/lib/supabase/client';
+import { getLbpRate } from '@/lib/actions/settings';
 
 interface CurrencyContextValue {
   currency: Currency;
@@ -27,16 +27,7 @@ const CurrencyContext = createContext<CurrencyContextValue>({
 
 async function fetchRateFromDb(): Promise<number> {
   try {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'lbp_rate')
-      .single();
-    if (data?.value) {
-      const rate = Number(data.value);
-      if (!isNaN(rate) && rate > 0) return rate;
-    }
+    return await getLbpRate();
   } catch {}
   return DEFAULT_LBP_RATE;
 }

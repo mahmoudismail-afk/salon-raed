@@ -41,20 +41,30 @@ async function getDashboardData() {
       query("SELECT mp.name FROM memberships ms JOIN membership_plans mp ON ms.plan_id = mp.id WHERE ms.status = 'active'"),
     ]);
 
+    // Always build all 7 days (Mon → Sun); future days show 0 revenue
     const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const weekDays: { date: string; day: string; revenue: number }[] = [];
-    const totalDays = daysFromMonday + 1;
-    for (let i = 0; i < totalDays; i++) {
+    const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const weekDays: { date: string; day: string; revenue: number; isToday: boolean }[] = [];
+    for (let i = 0; i < 7; i++) {
       const d = new Date(startOfWeek);
       d.setDate(startOfWeek.getDate() + i);
-      weekDays.push({ date: d.toISOString().split('T')[0], day: i === totalDays - 1 ? 'Today' : DAYS[d.getDay()], revenue: 0 });
+      const dateStr = d.toISOString().split('T')[0];
+      const isToday = dateStr === todayStr;
+      weekDays.push({ date: dateStr, day: isToday ? 'Today' : DAY_LABELS[i], revenue: 0, isToday });
     }
     weekPaymentsRes.rows.forEach((p: any) => {
-      const entry = weekDays.find(d => d.date === p.payment_date);
+      const payDate = (p.payment_date instanceof Date)
+        ? p.payment_date.toISOString().split('T')[0]
+        : String(p.payment_date).split('T')[0];
+      const entry = weekDays.find(d => d.date === payDate);
       if (entry) entry.revenue += Number(p.amount);
     });
+    const todayIndex = weekDays.findIndex(d => d.isToday);
     const weeklyChartData = weekDays.map(({ day, revenue }) => ({ day, revenue }));
-    const weeklyRevenue = weekDays.reduce((s, d) => s + d.revenue, 0);
+    const weeklyRevenue = weekDays.filter(d => !d.isToday || true).reduce((s, d) => {
+      // Only sum days up to and including today
+      return weekDays.indexOf(d) <= todayIndex ? s + d.revenue : s;
+    }, 0);
 
     const revenueByMonth: Record<string, number> = {};
     months.forEach((m) => (revenueByMonth[m] = 0));
@@ -105,7 +115,7 @@ async function getDashboardData() {
 }
 
 export default async function DashboardPage() {
-  const { stats, revenueData, memberGrowthData, planData } = await getDashboardData();
+  const { stats, weeklyChartData, revenueData, memberGrowthData, planData } = await getDashboardData();
 
   return (
     <div>
@@ -122,8 +132,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Members + Monthly Revenue row */}
-      <div className="grid-3" style={{ marginBottom: '1.25rem' }}>
+      {/* Members row */}
+      <div className="grid-2" style={{ marginBottom: '1.25rem' }}>
         <StatCard
           title="Total Members"
           value={stats.totalMembers}
@@ -139,6 +149,17 @@ export default async function DashboardPage() {
           icon={<Users size={22} />}
           iconColor="#10b981"
           iconBg="rgba(16,185,129,0.15)"
+        />
+      </div>
+
+      {/* Revenue row: weekly + monthly */}
+      <div className="grid-2" style={{ marginBottom: '1.25rem' }}>
+        <StatCard
+          title="Revenue This Week"
+          amountUsd={stats.weeklyRevenue}
+          icon={<TrendingUp size={22} />}
+          iconColor="#6c63ff"
+          iconBg="rgba(108,99,255,0.15)"
         />
         <StatCard
           title="Revenue This Month"
@@ -169,6 +190,7 @@ export default async function DashboardPage() {
 
       {/* All Charts */}
       <DashboardCharts
+        weeklyChartData={weeklyChartData}
         revenueData={revenueData}
         memberGrowthData={memberGrowthData}
         planData={planData}

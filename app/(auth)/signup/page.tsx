@@ -73,8 +73,7 @@ export default function SignupPage() {
     }
 
     // Success! Redirect to dashboard immediately.
-    router.push('/dashboard');
-    router.refresh();
+    window.location.href = '/dashboard';
   }
 
 

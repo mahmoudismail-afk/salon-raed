@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { query } from '@/lib/db';
 import { Receipt } from 'lucide-react';
 import ExpensesClient from '@/components/expenses/ExpensesClient';
 import { requirePermission } from '@/lib/auth-guard';
@@ -10,12 +10,10 @@ export const dynamic = 'force-dynamic';
 export default async function ExpensesPage() {
   await requirePermission('expenses');
 
-  const supabase = await createClient();
   let expenses: any[] = [];
   try {
-    const { data, error } = await supabase
-      .from('expenses').select('*').order('date', { ascending: false });
-    if (!error) expenses = data ?? [];
+    const { rows } = await query('SELECT * FROM expenses ORDER BY date DESC');
+    expenses = rows ?? [];
   } catch {
     // table not yet created
   }

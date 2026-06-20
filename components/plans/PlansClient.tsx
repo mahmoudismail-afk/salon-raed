@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Edit, Trash2, Check, X, Scissors } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { createPlan, updatePlan, deletePlan } from '@/lib/actions/plans';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import CurrencyInput from '@/components/ui/CurrencyInput';
@@ -53,7 +53,6 @@ export default function PlansClient({ plans: initialPlans }: { plans: Plan[] }) 
     }
     setSaveError('');
     setSaving(true);
-    const supabase = createClient();
     const payload = {
       name: form.name,
       description: form.description || null,
@@ -64,12 +63,12 @@ export default function PlansClient({ plans: initialPlans }: { plans: Plan[] }) 
     };
 
     if (editPlan) {
-      const { data, error } = await supabase.from('membership_plans').update(payload).eq('id', editPlan.id).select().single();
-      if (error) { setSaveError(error.message); setSaving(false); return; }
+      const { data, error } = await updatePlan(editPlan.id, payload);
+      if (error) { setSaveError(error); setSaving(false); return; }
       if (data) setPlans((prev) => prev.map((p) => p.id === editPlan.id ? data : p));
     } else {
-      const { data, error } = await supabase.from('membership_plans').insert(payload).select().single();
-      if (error) { setSaveError(error.message); setSaving(false); return; }
+      const { data, error } = await createPlan(payload);
+      if (error) { setSaveError(error); setSaving(false); return; }
       if (data) setPlans((prev) => [...prev, data]);
     }
     setModalOpen(false);
@@ -80,8 +79,7 @@ export default function PlansClient({ plans: initialPlans }: { plans: Plan[] }) 
   async function handleDelete() {
     if (!deleteId) return;
     setDeleting(true);
-    const supabase = createClient();
-    await supabase.from('membership_plans').delete().eq('id', deleteId);
+    await deletePlan(deleteId);
     setPlans((prev) => prev.filter((p) => p.id !== deleteId));
     setDeleteId(null);
     setDeleting(false);

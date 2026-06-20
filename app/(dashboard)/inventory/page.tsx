@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { query } from '@/lib/db';
 import InventoryClient from '@/components/inventory/InventoryClient';
 import { requirePermission } from '@/lib/auth-guard';
 import type { Metadata } from 'next';
@@ -7,12 +7,22 @@ export const metadata: Metadata = { title: 'Inventory & Shop' };
 
 export default async function InventoryPage() {
   await requirePermission('inventory');
-  const supabase = await createClient();
 
-  const [{ data: items }, { data: transactions }] = await Promise.all([
-    supabase.from('inventory_items').select('*').order('created_at', { ascending: false }),
-    supabase.from('inventory_transactions').select('*, inventory_items(name)').order('created_at', { ascending: false }),
+  const [itemsRes, transactionsRes] = await Promise.all([
+    query('SELECT * FROM inventory_items ORDER BY created_at DESC'),
+    query(`
+      SELECT t.*, i.name as item_name 
+      FROM inventory_transactions t 
+      LEFT JOIN inventory_items i ON t.item_id = i.id 
+      ORDER BY t.created_at DESC
+    `),
   ]);
+
+  const items = itemsRes.rows;
+  const transactions = transactionsRes.rows.map(r => ({
+    ...r,
+    inventory_items: { name: r.item_name }
+  }));
 
   return (
     <div>

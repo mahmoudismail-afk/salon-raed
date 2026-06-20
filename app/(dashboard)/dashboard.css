@@ -440,12 +440,19 @@
     gap: 0.2rem;
     padding: 0.375rem 0.25rem;
     border-radius: var(--radius-md);
-    font-size: 0.625rem;
+    /* iOS zooms in when font-size < 16px — use 16px + scale down visually */
+    font-size: 16px;
+    transform: scale(0.7);
+    transform-origin: center center;
     font-weight: 600;
     color: var(--text-muted);
     text-decoration: none;
-    transition: all var(--transition);
+    transition: color var(--transition), background var(--transition);
     min-width: 0;
+    /* Prevent double-tap zoom and 300ms tap delay */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
   }
 
   .mobile-bottom-nav-item.active {
@@ -491,4 +498,21 @@
   .search-input-wrapper { min-width: 0; max-width: 100%; }
   /* Stat summary mini-grids: keep 2-col for small summary cards */
   .grid-stats { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+}
+
+/* ── Light mode: smooth color transitions ── */
+body,
+.sidebar,
+.topbar,
+.card,
+.chart-card,
+.stat-card,
+.modal,
+.form-input,
+.search-input,
+.mobile-bottom-nav {
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition);
 }

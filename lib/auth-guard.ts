@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { query } from '@/lib/db';
 import { getStaffPermissions } from '@/lib/actions/settings';
 
 /**
@@ -11,11 +12,11 @@ export async function requireRole(requiredRole: 'admin' | 'staff') {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('auth_id', user.id)
-    .single();
+  const { rows } = await query(
+    'SELECT role FROM profiles WHERE auth_id = $1 LIMIT 1',
+    [user.id]
+  );
+  const profile = rows[0];
 
   if (!profile) {
     redirect('/login?error=account-disabled');
@@ -39,11 +40,11 @@ export async function requirePermission(permissionKey: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('auth_id', user.id)
-    .single();
+  const { rows } = await query(
+    'SELECT role FROM profiles WHERE auth_id = $1 LIMIT 1',
+    [user.id]
+  );
+  const profile = rows[0];
 
   if (!profile) {
     redirect('/login?error=account-disabled');

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { createStaffAccount, deleteUser, updateProfile, saveStaffPermissions, saveLbpRate } from '@/lib/actions/settings';
+import { changePassword } from '@/lib/actions/auth';
 import { getInitials, formatDate } from '@/lib/utils';
 import Modal from '@/components/ui/Modal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -63,10 +64,10 @@ export default function SettingsClient({
     if (pwForm.password !== pwForm.confirm) { setPwMsg({ type: 'error', text: 'Passwords do not match.' }); return; }
     setPwSaving(true);
     setPwMsg(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password: pwForm.password });
-    setPwMsg(error
-      ? { type: 'error', text: error.message }
+    // Use the server action + admin SDK so it works reliably on Cloudflare Workers
+    const result = await changePassword(userId, pwForm.password);
+    setPwMsg(result.error
+      ? { type: 'error', text: result.error }
       : { type: 'success', text: 'Password changed successfully.' }
     );
     setPwForm({ password: '', confirm: '' });

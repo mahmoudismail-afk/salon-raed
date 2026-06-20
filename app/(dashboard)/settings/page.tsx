@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { query } from '@/lib/db';
 import SettingsClient from '@/components/settings/SettingsClient';
 import { getStaffPermissions, getLbpRate } from '@/lib/actions/settings';
 import type { Metadata } from 'next';
@@ -12,20 +13,18 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, full_name, email, phone, role, avatar_url')
-    .eq('auth_id', user.id)
-    .single();
+  const { rows: profileRows } = await query(
+    'SELECT id, full_name, email, phone, role, avatar_url FROM profiles WHERE auth_id = $1 LIMIT 1',
+    [user.id]
+  );
+  const profile = profileRows[0];
 
   let allUsers: any[] = [];
   if (profile?.role === 'admin') {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, auth_id, full_name, email, phone, role, created_at')
-      .in('role', ['admin', 'staff'])
-      .order('created_at');
-    allUsers = data ?? [];
+    const { rows } = await query(
+      "SELECT id, auth_id, full_name, email, phone, role, created_at FROM profiles WHERE role IN ('admin', 'staff') ORDER BY created_at"
+    );
+    allUsers = rows ?? [];
   }
 
   const [staffPermissions, lbpRate] = await Promise.all([

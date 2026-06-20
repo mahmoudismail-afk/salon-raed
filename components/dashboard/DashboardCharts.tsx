@@ -1,17 +1,18 @@
 'use client';
 
-import { RevenueChart, MemberGrowthChart, PlanDistributionChart } from '@/components/charts/Charts';
+import { RevenueChart, MemberGrowthChart, PlanDistributionChart, WeeklyRevenueChart } from '@/components/charts/Charts';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { formatCurrencyAuto } from '@/lib/currency';
 
 interface DashboardChartsProps {
+  weeklyChartData: { day: string; revenue: number }[];
   revenueData:     { month: string; revenue: number }[];
   memberGrowthData: { month: string; members: number }[];
   planData:        { name: string; value: number }[];
 }
 
 export default function DashboardCharts({
-  revenueData, memberGrowthData, planData,
+  weeklyChartData, revenueData, memberGrowthData, planData,
 }: DashboardChartsProps) {
   const { currency, lbpRate } = useCurrency();
 
@@ -24,8 +25,25 @@ export default function DashboardCharts({
   const currencyFormatter = (val: number) =>
     formatCurrencyAuto(currency === 'LBP' ? val / lbpRate : val, currency, lbpRate);
 
+  // Convert weekly data to current currency
+  const convertedWeeklyData = weeklyChartData.map(d => ({
+    ...d,
+    revenue: currency === 'LBP' ? Math.round(d.revenue * lbpRate) : d.revenue,
+  }));
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {/* Weekly Revenue — full width */}
+      <div className="chart-card">
+        <div className="chart-card-header">
+          <div>
+            <p className="chart-card-title">Weekly Revenue</p>
+            <p className="chart-card-subtitle">Daily breakdown for the current week — today highlighted in green ({currency})</p>
+          </div>
+        </div>
+        <WeeklyRevenueChart data={convertedWeeklyData} currency={currency} lbpRate={lbpRate} />
+      </div>
+
       {/* Monthly Revenue — full width */}
       <div className="chart-card">
         <div className="chart-card-header">

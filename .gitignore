@@ -25,6 +25,7 @@ yarn-error.log*
 # Local env files
 .env*.local
 .env
+.env.*
 
 # Vercel
 .vercel
@@ -36,10 +37,10 @@ next-env.d.ts
 # OpenNext
 /.open-next/
 .wrangler/
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+wrangler.toml
 
 # Backups
 backups/
+
+# Scratch folder (contains sensitive temporary test scripts)
+scratch/

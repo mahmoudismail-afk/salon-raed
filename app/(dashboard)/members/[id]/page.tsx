@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { query } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Edit, ArrowLeft } from 'lucide-react';
@@ -9,20 +9,50 @@ export const metadata: Metadata = { title: 'Member Profile' };
 
 export default async function MemberDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  const [{ data: member }, { data: plans }] = await Promise.all([
-    supabase
-      .from('members')
-      .select(`
-        *, profile:profiles(full_name, email, phone, avatar_url),
-        memberships(*, plan:membership_plans(name, price, duration_days)),
-        payments(id, amount, payment_method, payment_date, notes)
-      `)
-      .eq('id', id)
-      .single(),
-    supabase.from('membership_plans').select('*').eq('is_active', true).order('price'),
+  const [
+    { rows: memberRows },
+    { rows: membershipsRows },
+    { rows: paymentsRows },
+    { rows: plans }
+  ] = await Promise.all([
+    query(`
+      SELECT m.*, p.full_name, p.email, p.phone, p.avatar_url 
+      FROM members m 
+      LEFT JOIN profiles p ON m.profile_id = p.id 
+      WHERE m.id = $1 LIMIT 1
+    `, [id]),
+    query(`
+      SELECT ms.*, mp.name as plan_name, mp.price as plan_price, mp.duration_days as plan_duration_days
+      FROM memberships ms 
+      LEFT JOIN membership_plans mp ON ms.plan_id = mp.id 
+      WHERE ms.member_id = $1
+    `, [id]),
+    query(`
+      SELECT id, amount, payment_method, payment_date, notes 
+      FROM payments 
+      WHERE member_id = $1
+    `, [id]),
+    query("SELECT * FROM membership_plans WHERE is_active = true ORDER BY price ASC")
   ]);
+
+  const memberData = memberRows[0];
+  if (!memberData) notFound();
+
+  const member = {
+    ...memberData,
+    profile: {
+      full_name: memberData.full_name,
+      email: memberData.email,
+      phone: memberData.phone,
+      avatar_url: memberData.avatar_url
+    },
+    memberships: membershipsRows.map((ms: any) => ({
+      ...ms,
+      plan: { name: ms.plan_name, price: ms.plan_price, duration_days: ms.plan_duration_days }
+    })),
+    payments: paymentsRows
+  };
 
   if (!member) notFound();
 

@@ -11,6 +11,11 @@ const nextConfig = {
     ],
   },
   output: 'standalone',
+  // Exclude source maps and type declarations so esbuild doesn't fail
+  // when bundling for Cloudflare Workers (opennextjs-cloudflare).
+  outputFileTracingExcludes: {
+    '*': ['./**/*.js.map', './**/*.d.ts'],
+  },
   // Redirect root to /dashboard at the config level (avoids the page manifest issue)
   async redirects() {
     return [
